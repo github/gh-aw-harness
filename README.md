@@ -10,6 +10,7 @@ Build the CLI:
 make build
 ```
 
+
 Run it locally:
 
 ```bash
