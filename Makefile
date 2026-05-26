@@ -3,10 +3,10 @@
 	license-check license-report security-scan security-gosec security-govulncheck \
 	sbom lifecycle-validate validate-lifecycle agent-finish help
 
-BINARY_NAME=threat-detect
+BINARY_NAME=gh-aw-harness
 VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
-LDFLAGS=-ldflags "-X github.com/github/gh-aw-threat-detection/pkg/detector.Version=$(VERSION)"
-REGISTRY?=ghcr.io/github/gh-aw-threat-detection
+LDFLAGS=-ldflags "-X github.com/github/gh-aw-harness/pkg/harness.Version=$(VERSION)"
+REGISTRY?=ghcr.io/github/gh-aw-harness
 IMAGE_TAG?=$(VERSION)
 
 all: lint test build
@@ -88,7 +88,7 @@ fmt-check:
 	fi
 
 build:
-	go build $(LDFLAGS) -o bin/$(BINARY_NAME) ./cmd/threat-detect
+	go build $(LDFLAGS) -o bin/$(BINARY_NAME) ./cmd/gh-aw-harness
 
 test:
 	go test -v -race ./...
@@ -98,7 +98,7 @@ test-coverage:
 	go tool cover -html=coverage.out -o coverage.html
 
 lifecycle-validate:
-	go test ./pkg/detector -run TestThreatDetectionLifecycleRegistry -count=1
+	@echo "No lifecycle registry is defined for gh-aw-harness yet."
 
 lint:
 	go vet ./...
@@ -190,7 +190,7 @@ help:
 	@echo "  license-report - Generate CSV license report"
 	@echo "  security-scan  - Run gosec and govulncheck"
 	@echo "  sbom           - Generate SPDX and CycloneDX SBOMs"
-	@echo "  lifecycle-validate - Validate threat detection lifecycle metadata"
+	@echo "  lifecycle-validate - Placeholder lifecycle validation target"
 	@echo "  validate-lifecycle - Alias for lifecycle-validate"
 	@echo "  docker-build   - Build the Docker image"
 	@echo "  docker-smoke   - Build the Docker image and run a CLI smoke test"

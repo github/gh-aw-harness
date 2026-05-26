@@ -1,3 +1,3 @@
-module github.com/github/gh-aw-threat-detection
+module github.com/github/gh-aw-harness
 
 go 1.23.0

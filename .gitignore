@@ -1,6 +1,6 @@
 # Binaries
 /bin/
-/threat-detect
+/gh-aw-harness
 *.exe
 
 # Go build artifacts

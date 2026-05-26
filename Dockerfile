@@ -12,19 +12,19 @@ COPY . .
 # install git or other VCS tools. Add them here if future direct VCS-backed
 # modules require them.
 ARG VERSION=dev
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w -X github.com/github/gh-aw-threat-detection/pkg/detector.Version=${VERSION}" -o /threat-detect ./cmd/threat-detect
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w -X github.com/github/gh-aw-harness/pkg/harness.Version=${VERSION}" -o /gh-aw-harness ./cmd/gh-aw-harness
 
 # Runtime stage
 FROM alpine:3.20
 
 # Keep Alpine's standard CA bundle/package-managed trust store layout.
 RUN apk add --no-cache ca-certificates
-COPY --from=builder /threat-detect /usr/local/bin/threat-detect
+COPY --from=builder /gh-aw-harness /usr/local/bin/gh-aw-harness
 
 # Create non-root user
-RUN adduser -D -u 1000 detector
-USER detector
+RUN adduser -D -u 1000 harness
+USER harness
 
 WORKDIR /workspace
 
-ENTRYPOINT ["threat-detect"]
+ENTRYPOINT ["gh-aw-harness"]
