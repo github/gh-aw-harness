@@ -1,20 +1,12 @@
 # Developer Guide
 
-This guide is the maintainer-oriented reference for `gh-aw-threat-detection`.
-
-It is intentionally shorter than the parent `gh-aw` guide and only covers the surfaces that exist in this repository.
+This guide is the maintainer-oriented reference for `gh-aw-harness`.
 
 ## Scope
 
-This repository contains the threat detection component used by GitHub Agentic Workflows.
+This repository is a harness for GitHub Agentic Workflows. It currently provides a small Go CLI, baseline CI, copied agent skills, a Copilot smoke workflow, and a placeholder specification that will be refined as the harness contract is defined.
 
-Core responsibilities:
-
-- read agent artifacts from an artifacts directory
-- evaluate those artifacts for prompt injection, secret leakage, and malicious patch risk
-- produce a machine-readable detection result before downstream `safe-outputs` handling proceeds
-
-The canonical behavior specification for this repository lives in [specs/threat-detection-spec.md](specs/threat-detection-spec.md).
+The canonical behavior specification for this repository lives in [specs/harness-spec.md](specs/harness-spec.md).
 
 ## Development Environment
 
@@ -22,13 +14,13 @@ Preferred setup:
 
 - GitHub Codespaces or the local dev container in [.devcontainer/devcontainer.json](.devcontainer/devcontainer.json)
 
-The dev container keeps model-related tooling available, including GitHub CLI, Docker, Copilot CLI, and optional Vertex-backed Claude setup. Vertex credentials are optional and configured by setting `VERTEX_API_JSON` before container creation.
+The dev container keeps common project tooling available, including Go, Docker, GitHub CLI, and Copilot CLI.
 
 ### Local Setup
 
 ```bash
-git clone https://github.com/github/gh-aw-threat-detection.git
-cd gh-aw-threat-detection
+git clone https://github.com/github/gh-aw-harness.git
+cd gh-aw-harness
 make deps
 make build
 ```
@@ -70,62 +62,34 @@ Use `make help` to see the full list of maintained targets.
 ```text
 /
 ├── .devcontainer/       # Codespaces and Dev Container setup
-├── .github/workflows/   # CI and release workflows
-├── cmd/threat-detect/   # CLI entrypoint
-├── pkg/artifacts/       # Artifact loading and validation
-├── pkg/detector/        # Threat detection logic and prompt templates
-├── pkg/engine/          # AI engine abstraction and adapters
-├── scratchpad/          # Design references retained from gh-aw where still relevant
+├── .github/             # Issue templates and workflows
+├── cmd/gh-aw-harness/   # CLI entrypoint
+├── pkg/harness/         # Minimal harness package
 ├── skills/              # Small repo-relevant agent skills
-├── specs/               # Threat detection specification
+├── specs/               # Harness specification scaffold
 └── Makefile             # Build and maintainer commands
 ```
 
-## Detection-Focused Development Notes
+## Agentic Workflow Smoke Test
 
-### Inputs To The Detection Module
+The Copilot smoke workflow is checked in as both source and generated YAML:
 
-The detector operates on an artifacts directory. The current expected shape is documented in [README.md](README.md) and [specs/threat-detection-spec.md](specs/threat-detection-spec.md), including:
+- [.github/workflows/smoke-copilot.md](.github/workflows/smoke-copilot.md)
+- [.github/workflows/smoke-copilot.lock.yml](.github/workflows/smoke-copilot.lock.yml)
 
-- `aw-prompts/prompt.txt`
-- `agent_output.json`
-- optional `aw-*.patch`
-- optional `aw-*.bundle`
-- optional `comment-memory/*.md`
-
-When changing artifact handling, review:
-
-- [pkg/artifacts](pkg/artifacts)
-- [specs/threat-detection-spec.md](specs/threat-detection-spec.md)
-- [scratchpad/artifact-naming-compatibility.md](scratchpad/artifact-naming-compatibility.md)
-
-### Safe Outputs Context
-
-Threat detection sits upstream of `safe-outputs`. This repo does not implement the full `safe-outputs` system, but changes here should preserve the assumptions made by downstream consumers.
-
-Useful references:
-
-- [scratchpad/safe-outputs-specification.md](scratchpad/safe-outputs-specification.md)
-- [scratchpad/safe-output-environment-variables.md](scratchpad/safe-output-environment-variables.md)
-- [scratchpad/safe-output-messages.md](scratchpad/safe-output-messages.md)
+After editing the markdown source, regenerate the lock file with `gh aw compile` in an environment that has the `gh-aw` GitHub CLI extension installed.
 
 ## Maintainer Guidance
 
 When changing code in this repository:
 
-- keep behavior aligned with [specs/threat-detection-spec.md](specs/threat-detection-spec.md)
+- keep behavior aligned with [specs/harness-spec.md](specs/harness-spec.md) as it evolves
 - prefer small, local packages and targeted tests
 - update README or spec text when behavior changes
-- preserve the JSON result contract unless the spec intentionally changes it
+- keep workflow lock files generated from their markdown sources
 
-Useful retained references:
+Useful references:
 
-- [scratchpad/code-organization.md](scratchpad/code-organization.md)
-- [scratchpad/validation-architecture.md](scratchpad/validation-architecture.md)
-- [scratchpad/go-type-patterns.md](scratchpad/go-type-patterns.md)
-- [scratchpad/styles-guide.md](scratchpad/styles-guide.md)
-- [scratchpad/errors.md](scratchpad/errors.md)
-- [scratchpad/testing.md](scratchpad/testing.md)
 - [skills/console-rendering/SKILL.md](skills/console-rendering/SKILL.md)
 - [skills/error-messages/SKILL.md](skills/error-messages/SKILL.md)
 
@@ -145,190 +109,15 @@ If tooling is missing:
 - run `make deps-dev` to install maintainer dependencies
 - reopen the dev container if local environment drift is suspected
 
-## Release Process
-
-This section stays in place even though the release flow is still being built out.
-
-### Threat Detection Version Lifecycle
-
-Maintainers manage the lifecycle for version-tagged threat detection releases in
-[releases/threat-detection-lifecycle.json](releases/threat-detection-lifecycle.json).
-The registry is the machine-readable source of truth consumed or vendored by the
-parent `gh-aw` orchestrator before it pulls or runs the detector container.
-
-Lifecycle statuses:
-
-| Status | Meaning | Expected behavior |
-|--------|---------|-------------------|
-| `active` | Supported and safe to use | Run normally. |
-| `deprecated` | Still supported, but users should migrate | Emit a GitHub Actions warning annotation and job summary text, then continue. |
-| `obsolete` | No longer safe or supported | Fail closed before the detector container runs. |
-| `yanked` | Unsafe because of a security or correctness issue | Fail closed before the detector container runs. |
-
-Each lifecycle entry must include the version, status, reason, replacement
-guidance, relevant deprecation or obsolescence dates, an advisory or release URL,
-urgency, and a maintainer note. Replacement guidance must point to another
-registry entry or be explicitly marked as a future or external replacement.
-
-Maintainer responsibilities:
-
-- promoted releases are `active` by default unless the registry says otherwise
-- edit the registry during planned deprecations, before marking a version
-  obsolete, and when promoting a replacement release
-- ensure deprecated versions provide actionable warning text with the reason,
-  replacement version, dates, advisory URL, urgency, and remediation steps
-- ensure obsolete versions include enough guidance for `gh-aw` to fail before
-  invoking the detector container and tell users exactly how to upgrade
-- run `make lifecycle-validate` before release or promotion changes that edit
-  lifecycle metadata
-
-Lifecycle enforcement must not rely only on code inside old detector binaries.
-Previously released detectors cannot learn that they later became obsolete unless
-they receive external metadata or network access, and detector runtime egress may
-be blocked. The parent `gh-aw` orchestrator or generated workflow should perform
-the lifecycle check before pulling or running this container.
-
-### Promotion Model
-
-Releases follow a **prerelease → promote** model:
-
-1. **Create tag (manual)** — a maintainer triggers the
-   [Create Release Tag workflow](.github/workflows/create-release-tag.yml) via
-   **Actions → Create Release Tag → Run workflow** and selects a patch or minor
-   bump. The workflow validates `main` and pushes the next `vX.Y.Z` tag.
-
-2. **Build & Publish (automated)** — pushing a tag matching `v*` triggers the
-   [release workflow](.github/workflows/release.yml). It builds artifacts,
-   pushes a version-tagged container image (e.g. `ghcr.io/github/gh-aw-threat-detection:v1.2.3`),
-   and creates a **prerelease** on GitHub that records the image digest. The `release-publish` environment gate
-   pauses the workflow before publishing so maintainers can abort if needed.
-
-3. **Promote (manual)** — after verifying the prerelease, a maintainer triggers
-   the [promote-release workflow](.github/workflows/promote-release.yml) via
-   **Actions → Promote Release → Run workflow**, entering the tag name. This
-   workflow (gated by the `release-promote` environment):
-   - verifies the release is still a prerelease
-   - pulls the recorded image digest and pushes that exact image as `latest`
-   - marks the GitHub release as stable and explicitly selects it as Latest (`--prerelease=false --latest`)
-
-The `latest` container tag and the GitHub "Latest" release badge only move
-when a maintainer explicitly promotes. This gives the team time to validate a
-release before it becomes the default for users installing with `version: latest`.
-
-#### Branch builds: `:main` and `:main-<shortsha>`
-
-In addition to release tags, every push to `main` triggers the
-[publish-main workflow](.github/workflows/publish-main.yml), which builds the
-container image and pushes two GHCR tags:
-
-- `ghcr.io/github/gh-aw-threat-detection:main` — moving tag that always points
-  to the most recent successful build from `main`.
-- `ghcr.io/github/gh-aw-threat-detection:main-<shortsha>` — immutable tag bound
-  to the specific `main` commit (useful for pinning in downstream workflows).
-
-These are **unverified branch builds**. They are not GitHub Releases, do not
-appear in [releases/threat-detection-lifecycle.json](releases/threat-detection-lifecycle.json),
-and are not eligible for promotion. The `:latest` tag is unaffected by this
-workflow and continues to track the most recently promoted release.
-
-### Lifecycle Registry
-
-Release lifecycle metadata lives in
-[releases/threat-detection-lifecycle.json](releases/threat-detection-lifecycle.json).
-Maintainers use one registry for all stable lifecycle states:
-
-- `active` — safe for new and pinned use.
-- `deprecated` — still allowed to run, but users should plan an upgrade.
-- `obsolete` — unsupported and not suitable for new use.
-- `yanked` — unsafe because of a security or correctness issue; stronger than
-  `obsolete` and must fail closed.
-
-`gh-aw` must check this registry before pulling or running a selected detector.
-If a user explicitly pins a yanked version or yanked digest, `gh-aw` must fail
-closed with the yank reason and safe replacement. It must not silently downgrade
-or upgrade explicit pins. `latest` is floating, so maintainers may retag it to a
-safe replacement during a yank.
-
-Validate registry edits with:
-
-```bash
-make lifecycle-validate
-```
-
-Yanked entries must include the version, image digest, yank date, severity,
-reason, advisory or release URL, and maintainer note. Provide replacement version
-and replacement digest when a safe replacement exists. Use
-`no_safe_replacement: true` only when maintainers have confirmed there is no safe
-replacement to recommend.
-
-### Emergency Yank Process
-
-Yank only when a released detector is unsafe to run, such as a detector that can
-miss high-impact malicious behavior, mishandle secrets, or otherwise produce
-unsafe results. A yank requires approval through the `release-yank` environment
-by a core maintainer or incident commander.
-
-Before yanking:
-
-1. Identify the bad version and immutable image digest.
-2. Select the most recent safe stable replacement, or confirm that no safe
-   replacement exists yet.
-3. Record the severity, user-facing reason, advisory or incident link when
-   available, and any maintainer-only note.
-4. Prepare user communication that explains the failure mode and replacement.
-
-To yank a release, run **Actions → Yank Release → Run workflow** from the default
-branch. The workflow:
-
-1. verifies the yanked release exists and records a sha256 image digest
-2. when a replacement is provided, verifies it exists, records a sha256 image
-   digest, and is not prerelease, yanked, or obsolete
-3. verifies required images are still pullable
-4. records the yanked status in the lifecycle registry
-5. retags `latest` to the replacement digest when a replacement is provided
-6. marks the yanked GitHub release title and notes with a warning
-7. removes the yanked release from GitHub's Latest selection and marks the
-   replacement as Latest when a replacement is provided
-
-Set `no_safe_replacement: true` and leave `replacement_tag` empty only when no
-safe replacement exists. In that case the workflow records
-`no_safe_replacement: true`, skips retagging `latest`, and leaves replacement
-selection until a safe stable release is available.
-
-Keep yanked artifacts available for audit and forensics unless legal or security
-policy requires package deletion. If branch protection prevents the workflow from
-committing the lifecycle registry update directly, create and merge an emergency
-PR with the same registry changes before announcing the yank as complete.
-
-### CI Support
+## CI Support
 
 The main CI workflow in [.github/workflows/ci.yml](.github/workflows/ci.yml) runs:
 
 - `go vet`
 - `go test -race`
 - `go build`
+- container smoke testing through `make docker-smoke`
 
-### Release Steps
+## Release Process
 
-1. Go to **Actions → Create Release Tag → Run workflow**.
-2. Select `patch` or `minor`. The visible `major` option may still appear in
-   the workflow UI, but it is currently rejected by the workflow until major
-   releases are enabled.
-3. Run the workflow. It validates `main`, computes the next semantic-version
-   tag, and pushes it to trigger the release workflow.
-
-After the tag is pushed:
-
-1. Approve the `release-publish` environment gate when the workflow pauses.
-2. Verify the prerelease on the [Releases page](../../releases) and test the
-   version-tagged container image.
-3. Confirm the lifecycle registry is correct for the release being promoted and
-   any versions it replaces; update and validate it with `make lifecycle-validate`
-   if statuses changed.
-4. When satisfied, go to **Actions → Promote Release**, enter the tag, and run
-   the workflow. Approve the `release-promote` environment gate.
-5. Confirm `latest` now resolves to the new version.
-
-If a promoted release is later found unsafe, follow the emergency yank process
-above instead of deleting tags or relying on GHCR package removal as the primary
-control.
+The release process for `gh-aw-harness` is not defined yet. Add release workflow documentation here once the image names, versioning model, and promotion process are finalized.
