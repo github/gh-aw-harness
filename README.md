@@ -86,6 +86,14 @@ After editing the markdown workflow, regenerate the lock file with `gh aw compil
 
 See [specs/harness-spec.md](specs/harness-spec.md). It is currently a scaffold and must be rewritten as the harness contract is defined.
 
+## Guardrails and Responsible AI
+
+Guardrails, safety and security are foundational to GitHub Agentic Workflows.
+See [Agentic Workflows guardrails](https://github.com/github/gh-aw/#guardrails) for more information on the security architecture and guardrails available.
+
+Using Agentic Workflows in your repository requires careful attention to security considerations and careful human supervision, and even then things can still go wrong.
+Use it with caution, and at your own risk.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and contribution guidelines.
