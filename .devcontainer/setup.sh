@@ -30,6 +30,13 @@ make deps
 echo "Installing uv..."
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
+echo "Ensuring gh-aw GitHub CLI extension is installed..."
+if gh extension list | awk '{print $1}' | grep -qx 'github/gh-aw'; then
+  gh extension upgrade github/gh-aw || true
+else
+  gh extension install github/gh-aw
+fi
+
 if ! command -v gcloud >/dev/null 2>&1; then
   echo "Installing Google Cloud CLI for optional Vertex-backed models..."
   sudo apt-get update
